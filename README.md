@@ -1,4 +1,4 @@
-# CSV-Reader
+# CSV-Reader (C#)
 Get values from CSV Text
 
 1. Load your CSV text how you want into some string variable;
