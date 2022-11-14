@@ -1,0 +1,121 @@
+using System.Linq;
+using System.Text.RegularExpressions;
+using UnityEngine;
+
+public static class CSVReader {
+    private static string[,] textAsCSV;     //Array contents of the CSVs
+    private static int rowNum, columnNum;   //Row and column numbers
+
+    /// <summary>
+    ///     Initialise the class ready for reading each row/column from supplied text
+    /// </summary>
+    /// <param name="_text">Text in a CSV format</param>
+    /// <returns>Number of rows in CSV text</returns>
+    public static int PrepareText(string _text) {
+        textAsCSV = SplitCsvGrid(_text);
+        rowNum = columnNum = 0;
+        return textAsCSV.GetLength(1);
+    }
+
+    /// <summary>
+    ///     Clean up when you have finished reading the file
+    /// </summary>
+    public static void CleanUp() {
+        textAsCSV = null;
+        rowNum = columnNum = 0;
+    }
+
+    public static string GetString() {
+        if (columnNum >= textAsCSV.GetLength(0)) return null;
+        return textAsCSV[columnNum++, rowNum];
+    }
+
+    public static float GetFloat() {
+        if (columnNum >= textAsCSV.GetLength(0)) return 0;
+        return float.Parse(textAsCSV[columnNum++, rowNum]);
+    }
+
+    public static int GetInt32() {
+        if (columnNum >= textAsCSV.GetLength(0)) return 0;
+        return int.Parse(textAsCSV[columnNum++, rowNum]);
+    }
+
+    public static bool GetBoolean() {
+        if (columnNum >= textAsCSV.GetLength(0)) return false;
+        return bool.Parse(textAsCSV[columnNum++, rowNum]);
+    }
+
+    public static bool NextRow() {
+        columnNum = 0;
+        return ++rowNum < textAsCSV.GetLength(1);
+    }
+
+    public static int CurrentRowNum() {
+        return rowNum;
+    }
+
+    // outputs the content of a 2D array, useful for checking the importer
+    public static void DebugOutputGrid(string[,] grid) {
+        var textOutput = "";
+        for (var y = 0; y < grid.GetUpperBound(1); y++) {
+            for (var x = 0; x < grid.GetUpperBound(0); x++) {
+                textOutput += grid[x, y];
+                textOutput += "|";
+            }
+
+            textOutput += "\n";
+        }
+
+        Debug.Log(textOutput);
+    }
+
+    // splits a CSV file into a 2D string array
+    private static string[,] SplitCsvGrid(string csvText) {
+        var lines = csvText.Split("\n"[0]);
+        int i, lineLenOffset, rowLen;
+
+        // finds the max width of row
+        //var width = 0;
+        var width = 1;
+        var len = lines.Length - 1;
+        for (i = 0; i <= len; i++) {
+            if (lines[i] == null || lines[i] == string.Empty) break;
+            var row = SplitCsvLine(lines[i]);
+            width = Mathf.Max(width, row.Length);
+        }
+
+        lineLenOffset = i > 0 && lines[i-1] == "" ? 2 : 1;
+
+        // creates new 2D string grid to output to
+        len += 1;   //Adjust for correct size of lines array
+        var outputGrid = new string[width, len];
+        for (var y = 0; y <= len - lineLenOffset; y++) {
+            if (lines[y] == null || lines[y] == string.Empty) break;
+            var row = SplitCsvLine(lines[y]);
+            rowLen = row.Length - 1;
+            for (var x = 0; x <= rowLen; x++) {
+                outputGrid[x, y] = row[x];
+
+                // This line was to replace "" with " in my output. 
+                // Include or edit it as you wish.
+                outputGrid[x, y] = outputGrid[x, y].Replace("\"\"", "\"");
+            }
+        }
+
+        return outputGrid;
+    }
+
+    // splits a CSV row 
+    private static string[] SplitCsvLine(string line) {
+        var list = (from Match m in Regex.Matches(line,
+                @"(((?<x>(?=[,\r\n]+))|""(?<x>([^""]|"""")+)""|(?<x>[^,\r\n]+)),?)",
+                RegexOptions.ExplicitCapture)
+            select m.Groups[1].Value).ToList();
+
+        var last = list.Count - 1;
+        if (list[last] == null || list[last] == string.Empty)
+            list.RemoveAt(list.Count - 1); //Remove the last item as it is always null or empty
+
+        return list.ToArray();
+    }
+}
